@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "lib": ["es6", "DOM", "DOM.Iterable"],
+    "target": "es6",
+    "module": "es6",
+    "moduleResolution": "node",
+    "rootDir": "src",
+    "outDir": "build",
+    "typeRoots": [ "node_modules/@types" ]
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}
