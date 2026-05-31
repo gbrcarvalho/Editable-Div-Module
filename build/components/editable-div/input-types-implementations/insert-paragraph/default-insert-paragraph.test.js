@@ -1,36 +1,33 @@
 /** @jest-environment jsdom */
-/*
-import { Cursor } from '../../../../utils/selection'
-import { splitLineOnCaret, splitLineOnRange } from './default-enter-behavior'
-*/
 import { EditableDiv } from '../../editable-div';
-/*
-const enterHandler = (ev: KeyboardEvent) => {
-  if (ev.key != 'Enter') return
-
-  const cursor = Cursor.get()
-  const [start, end] = cursor.range
-  const type = cursor.type
-
-  if (type == 'Range') {
-    ev.preventDefault()
-    if (ev.shiftKey) return
-    splitLineOnRange(cursor.range)
-  } else {
-    ev.preventDefault()
-    if (ev.shiftKey) return
-    splitLineOnCaret(start)
-  }
-}
-*/
+let editable;
+const testCases = [
+    // 1.1.1 - colapsado
+    { antes: '|texto', depois: '\n|texto' }, // 1.1.1.1
+    { antes: 'tex|to', depois: 'tex\n|to' }, // 1.1.1.2
+    { antes: 'texto|', depois: 'texto\n|' }, // 1.1.1.3
+    // 1.1.2.1 - não colapsado, node único
+    { antes: '|tex|to', depois: '\n|to' }, // 1.1.2.1.1
+    { antes: 't|ext|o', depois: 't\n|o' }, // 1.1.2.1.2
+    { antes: 'tex|to|', depois: 'tex\n|' }, // 1.1.2.1.3
+    { antes: '|texto|', depois: '\n|' }, // 1.1.2.1.4
+    // 1.1.2.2 - não colapsado, multi node
+    { antes: '|texto1\n|texto2', depois: '\n|texto2' }, // 1.1.2.2.1
+    { antes: '|texto1\ntex|to2', depois: '\n|to2' }, // 1.1.2.2.2
+    { antes: '|texto1\ntexto2|', depois: '\n|' }, // 1.1.2.2.3
+    { antes: 'tex|to1\n|texto2', depois: 'tex\n|texto2' }, // 1.1.2.2.4
+    { antes: 'tex|to1\ntex|to2', depois: 'tex\n|to2' }, // 1.1.2.2.5
+    { antes: 'tex|to1\ntexto2|', depois: 'tex\n|' }, // 1.1.2.2.6
+    { antes: 'texto1|\n|texto2', depois: 'texto1\n|texto2' }, // 1.1.2.2.7
+    { antes: 'texto1|\ntex|to2', depois: 'texto1\n|to2' }, // 1.1.2.2.8
+    { antes: 'texto1|\ntexto2|', depois: 'texto1\n|' }, // 1.1.2.2.9
+    // 2.1.1 - target vazio
+    { antes: '|', depois: '\n|' }, // 2.1.1.1
+];
 describe('Editable Div - Enter keydown behavior', () => {
-    let editable;
     beforeEach(() => {
-        editable = EditableDiv.create(); //document.createElement('div');
+        editable = EditableDiv.create();
         editable.setup();
-        //editable.contentEditable = 'true'
-        //editable.setAttribute('contenteditable', '')
-        //editable.addEventListener('keydown', enterHandler)
         document.body.appendChild(editable);
         editable.focus();
     });
@@ -38,100 +35,23 @@ describe('Editable Div - Enter keydown behavior', () => {
         document.body.removeChild(editable);
         jest.clearAllMocks();
     });
-    function setupHtmlAndCursor(htmlWithCursor) {
-        var _a;
-        editable.innerHTML = htmlWithCursor;
-        const walker = document.createTreeWalker(editable, NodeFilter.SHOW_TEXT, null);
-        let node = null;
-        let foundNode = null;
-        let offset = -1;
-        while ((node = walker.nextNode())) {
-            const idx = (_a = node.nodeValue) === null || _a === void 0 ? void 0 : _a.indexOf('|');
-            if (idx !== undefined && idx !== -1) {
-                foundNode = node;
-                offset = idx;
-                break;
-            }
-        }
-        if (foundNode) {
-            // Remove o marcador de cursor '|' do nó de texto
-            foundNode.nodeValue = foundNode.nodeValue.replace('|', '');
-            const selection = window.getSelection();
-            const range = document.createRange();
-            range.setStart(foundNode, offset);
-            range.collapse(true);
-            selection === null || selection === void 0 ? void 0 : selection.removeAllRanges();
-            selection === null || selection === void 0 ? void 0 : selection.addRange(range);
-        }
-    }
-    function setupHtmlAndCursor2(htmlWithCursor) {
-        var _a, _b;
-        editable.innerHTML = htmlWithCursor;
-        const walker = document.createTreeWalker(editable, NodeFilter.SHOW_TEXT, null);
-        let node = null;
-        let foundNodes = [];
-        let offsets = [];
-        while ((node = walker.nextNode())) {
-            let idx = (_a = node.nodeValue) === null || _a === void 0 ? void 0 : _a.indexOf('|');
-            let sameNode = 0;
-            while (idx != undefined && idx !== -1) {
-                foundNodes.push(node);
-                if (sameNode > 0) {
-                    offsets.push(idx - offsets.length);
+    describe('auto generated tests', () => {
+        testCases.forEach((tc, index) => {
+            it(`${index}`, () => {
+                const antes = generateHTML(tc.antes, 'div', '');
+                const depois = generateHTML(tc.depois, 'div', '');
+                const count = antes.split('|').length - 1;
+                if (count == 1) {
+                    setupHtmlAndCursor(antes);
                 }
-                else {
-                    offsets.push(idx);
+                else if (count == 2) {
+                    setupHtmlAndCursor2(antes);
                 }
-                idx = (_b = node.nodeValue) === null || _b === void 0 ? void 0 : _b.indexOf('|', idx + 1);
-                sameNode++;
-            }
-        }
-        if (foundNodes.length == 1) {
-            const foundNode = foundNodes[0];
-            const offset = offsets[0];
-            // Remove o marcador de cursor '|' do nó de texto
-            foundNode.nodeValue = foundNode.nodeValue.replace('|', '');
-            const selection = window.getSelection();
-            const range = document.createRange();
-            range.setStart(foundNode, offset);
-            range.collapse(true);
-            selection === null || selection === void 0 ? void 0 : selection.removeAllRanges();
-            selection === null || selection === void 0 ? void 0 : selection.addRange(range);
-        }
-        else if (foundNodes.length == 2) {
-            const [startNode, endNode] = foundNodes;
-            const [startOffset, endOffset] = offsets;
-            // Remove o marcador de cursor '|' do nó de texto
-            startNode.nodeValue = startNode.nodeValue.replace('|', '');
-            endNode.nodeValue = endNode.nodeValue.replace('|', '');
-            const selection = window.getSelection();
-            const range = document.createRange();
-            range.setStart(startNode, startOffset);
-            range.setEnd(endNode, endOffset);
-            selection === null || selection === void 0 ? void 0 : selection.removeAllRanges();
-            selection === null || selection === void 0 ? void 0 : selection.addRange(range);
-        }
-    }
-    function simulateEnter() {
-        /*
-        const event = new KeyboardEvent('keydown', {
-          key: 'Enter',
-          code: 'Enter',
-          keyCode: 13,
-          bubbles: true,
-          cancelable: true,
+                simulateEnter();
+                expect(editable.innerHTML).toBe(getExpectedHtml(depois));
+            });
         });
-        */
-        const event = new InputEvent('beforeinput', {
-            bubbles: true,
-            cancelable: true,
-            inputType: 'insertParagraph',
-        });
-        editable.dispatchEvent(event);
-    }
-    function getExpectedHtml(htmlWithCursor) {
-        return htmlWithCursor.replace(/\|/g, '');
-    }
+    });
     describe('Ao pressionar enter no textbox deve acontecer (uma unica linha):', () => {
         it('1. enter com a linha vazia', () => {
             const antes = '<div>|<br></div>';
@@ -775,3 +695,104 @@ describe('Editable Div - Enter keydown behavior', () => {
         });
     });
 });
+function generateHTML(text, tag, blockType) {
+    const nbsp = '&nbsp;';
+    const createBlock = (text, tag, blockType) => {
+        let resolved;
+        if (text == '') {
+            resolved = '<br>';
+        }
+        else if (text == '|') {
+            resolved = '|<br>';
+        }
+        else {
+            resolved = text;
+        }
+        resolved = resolved[0] == ' ' ? nbsp + resolved.substring(1) : resolved;
+        resolved = resolved[resolved.length - 1] == ' ' ? resolved.substring(0, resolved.length - 1) + nbsp : resolved;
+        return `<${tag !== null && tag !== void 0 ? tag : 'div'}${blockType ? ' data-type="' + blockType + '"' : ''}>${resolved}</${tag !== null && tag !== void 0 ? tag : 'div'}>`;
+    };
+    return text.split('\n').map(line => createBlock(line, tag, blockType)).join('');
+}
+function setupHtmlAndCursor(htmlWithCursor) {
+    var _a;
+    editable.innerHTML = htmlWithCursor;
+    const walker = document.createTreeWalker(editable, NodeFilter.SHOW_TEXT, null);
+    let node = null;
+    let foundNode = null;
+    let offset = -1;
+    while ((node = walker.nextNode())) {
+        const idx = (_a = node.nodeValue) === null || _a === void 0 ? void 0 : _a.indexOf('|');
+        if (idx !== undefined && idx !== -1) {
+            foundNode = node;
+            offset = idx;
+            break;
+        }
+    }
+    if (foundNode) {
+        foundNode.nodeValue = foundNode.nodeValue.replace('|', '');
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.setStart(foundNode, offset);
+        range.collapse(true);
+        selection === null || selection === void 0 ? void 0 : selection.removeAllRanges();
+        selection === null || selection === void 0 ? void 0 : selection.addRange(range);
+    }
+}
+function setupHtmlAndCursor2(htmlWithCursor) {
+    var _a, _b;
+    editable.innerHTML = htmlWithCursor;
+    const walker = document.createTreeWalker(editable, NodeFilter.SHOW_TEXT, null);
+    let node = null;
+    let foundNodes = [];
+    let offsets = [];
+    while ((node = walker.nextNode())) {
+        let idx = (_a = node.nodeValue) === null || _a === void 0 ? void 0 : _a.indexOf('|');
+        let sameNode = 0;
+        while (idx != undefined && idx !== -1) {
+            foundNodes.push(node);
+            if (sameNode > 0) {
+                offsets.push(idx - offsets.length);
+            }
+            else {
+                offsets.push(idx);
+            }
+            idx = (_b = node.nodeValue) === null || _b === void 0 ? void 0 : _b.indexOf('|', idx + 1);
+            sameNode++;
+        }
+    }
+    if (foundNodes.length == 1) {
+        const foundNode = foundNodes[0];
+        const offset = offsets[0];
+        foundNode.nodeValue = foundNode.nodeValue.replace('|', '');
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.setStart(foundNode, offset);
+        range.collapse(true);
+        selection === null || selection === void 0 ? void 0 : selection.removeAllRanges();
+        selection === null || selection === void 0 ? void 0 : selection.addRange(range);
+    }
+    else if (foundNodes.length == 2) {
+        const [startNode, endNode] = foundNodes;
+        const [startOffset, endOffset] = offsets;
+        startNode.nodeValue = startNode.nodeValue.replace('|', '');
+        endNode.nodeValue = endNode.nodeValue.replace('|', '');
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.setStart(startNode, startOffset);
+        range.setEnd(endNode, endOffset);
+        selection === null || selection === void 0 ? void 0 : selection.removeAllRanges();
+        selection === null || selection === void 0 ? void 0 : selection.addRange(range);
+    }
+}
+function simulateEnter() {
+    const event = new InputEvent('beforeinput', {
+        bubbles: true,
+        cancelable: true,
+        inputType: 'insertParagraph',
+    });
+    editable.dispatchEvent(event);
+}
+function getExpectedHtml(htmlWithCursor) {
+    return htmlWithCursor.replace(/\|/g, '');
+}

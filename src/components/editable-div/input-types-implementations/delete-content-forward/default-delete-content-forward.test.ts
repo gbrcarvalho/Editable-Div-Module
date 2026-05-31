@@ -1,20 +1,13 @@
 /** @jest-environment jsdom */
 
-import { Caret } from '../../../../utils/selection';
-import { mergeForward } from './default-delete-behavior';
-
-const deleteHandler = () => {
-  mergeForward(Caret.get())
-}
+import { EditableDiv, EditableDivElement } from '../../editable-div'
 
 describe('Editable Div - Delete keydown behavior', () => {
-  let editable: HTMLElement;
+  let editable: EditableDivElement;
 
   beforeEach(() => {
-    editable = document.createElement('div');
-    //editable.contentEditable = 'true'
-    editable.setAttribute('contenteditable', '')
-    editable.addEventListener('keydown', deleteHandler)
+    editable = EditableDiv.create()
+    editable.setup()
     document.body.appendChild(editable);
     editable.focus();
   });
@@ -49,13 +42,60 @@ describe('Editable Div - Delete keydown behavior', () => {
     }
   }
 
+  function setupHtmlAndCursor2(htmlWithCursor: string) {
+    editable.innerHTML = htmlWithCursor
+
+    const walker = document.createTreeWalker(editable, NodeFilter.SHOW_TEXT, null)
+    let node: Text | null = null
+    let foundNodes: Text[] = []
+    let offsets: number[] = []
+
+    while ((node = walker.nextNode() as Text)) {
+      let idx: number | undefined = node.nodeValue?.indexOf('|')
+      let sameNode: number = 0
+      while (idx != undefined && idx !== -1) {
+        foundNodes.push(node)
+        if (sameNode > 0) {
+          offsets.push(idx - offsets.length)
+        } else {
+          offsets.push(idx)
+        }
+        idx = node.nodeValue?.indexOf('|', idx + 1)
+        sameNode++
+      }
+    }
+
+    if (foundNodes.length == 1) {
+      const foundNode = foundNodes[0]
+      const offset = offsets[0]
+      foundNode.nodeValue = foundNode.nodeValue!.replace('|', '')
+
+      const selection = window.getSelection()
+      const range = document.createRange()
+      range.setStart(foundNode, offset)
+      range.collapse(true)
+      selection?.removeAllRanges()
+      selection?.addRange(range)
+    } else if (foundNodes.length == 2) {
+      const [startNode, endNode] = foundNodes
+      const [startOffset, endOffset] = offsets
+      startNode.nodeValue = startNode.nodeValue!.replace('|', '')
+      endNode.nodeValue = endNode.nodeValue!.replace('|', '')
+
+      const selection = window.getSelection()
+      const range = document.createRange()
+      range.setStart(startNode, startOffset)
+      range.setEnd(endNode, endOffset)
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    }
+  }
+
   function simulateDelete() {
-    const event = new KeyboardEvent('keydown', {
-      key: 'Delete',
-      code: 'Delete',
-      keyCode: 46,
+    const event = new InputEvent('beforeinput', {
       bubbles: true,
       cancelable: true,
+      inputType: 'deleteContentForward',
     });
     editable.dispatchEvent(event);
   }
@@ -357,6 +397,16 @@ describe('Editable Div - Delete keydown behavior', () => {
       const antes = '<div>texto1</div><div>texto2</div><div>|<br></div>';
       const depois = '<div>texto1</div><div>texto2</div><div>|<br></div>';
       setupHtmlAndCursor(antes);
+      simulateDelete();
+      expect(editable.innerHTML).toBe(getExpectedHtml(depois));
+    });
+  });
+
+  describe('Ao pressionar delete no textbox deve acontecer: cursor não colapsado uma linha:', () => {
+    it('1. delete na primeira linha com toda a palavra selecionada', () => {
+      const antes = '<div>|texto1|</div>';
+      const depois = '<div><br></div>';
+      setupHtmlAndCursor2(antes);
       simulateDelete();
       expect(editable.innerHTML).toBe(getExpectedHtml(depois));
     });

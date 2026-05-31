@@ -1,4 +1,6 @@
 import { Line } from '../../text-elements'
+
+import { TextBlock } from '../../text-elements'
 import { Caret } from '../../../../utils/selection'
 import { closest } from '../../../../utils/helpers'
 

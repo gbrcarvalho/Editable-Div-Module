@@ -1,21 +1,10 @@
 /** @jest-environment jsdom */
-/*
-import { Caret } from '../../../../utils/selection';
-import { mergeBackward } from './default-backspace-behavior';
-
-const backspaceHandler = () => {
-  mergeBackward(Caret.get())
-}
-*/
 import { EditableDiv } from "../../editable-div";
 describe('Editable Div - Backspace keydown behavior', () => {
     let editable;
     beforeEach(() => {
-        editable = EditableDiv.create(); //document.createElement('div');
+        editable = EditableDiv.create();
         editable.setup();
-        //editable.setAttribute('contenteditable', '')
-        //editable.contentEditable = 'true'
-        //editable.addEventListener('keydown', backspaceHandler)
         document.body.appendChild(editable);
         editable.focus();
     });
@@ -48,16 +37,53 @@ describe('Editable Div - Backspace keydown behavior', () => {
             selection === null || selection === void 0 ? void 0 : selection.addRange(range);
         }
     }
+    function setupHtmlAndCursor2(htmlWithCursor) {
+        var _a, _b;
+        editable.innerHTML = htmlWithCursor;
+        const walker = document.createTreeWalker(editable, NodeFilter.SHOW_TEXT, null);
+        let node = null;
+        let foundNodes = [];
+        let offsets = [];
+        while ((node = walker.nextNode())) {
+            let idx = (_a = node.nodeValue) === null || _a === void 0 ? void 0 : _a.indexOf('|');
+            let sameNode = 0;
+            while (idx != undefined && idx !== -1) {
+                foundNodes.push(node);
+                if (sameNode > 0) {
+                    offsets.push(idx - offsets.length);
+                }
+                else {
+                    offsets.push(idx);
+                }
+                idx = (_b = node.nodeValue) === null || _b === void 0 ? void 0 : _b.indexOf('|', idx + 1);
+                sameNode++;
+            }
+        }
+        if (foundNodes.length == 1) {
+            const foundNode = foundNodes[0];
+            const offset = offsets[0];
+            foundNode.nodeValue = foundNode.nodeValue.replace('|', '');
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.setStart(foundNode, offset);
+            range.collapse(true);
+            selection === null || selection === void 0 ? void 0 : selection.removeAllRanges();
+            selection === null || selection === void 0 ? void 0 : selection.addRange(range);
+        }
+        else if (foundNodes.length == 2) {
+            const [startNode, endNode] = foundNodes;
+            const [startOffset, endOffset] = offsets;
+            startNode.nodeValue = startNode.nodeValue.replace('|', '');
+            endNode.nodeValue = endNode.nodeValue.replace('|', '');
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.setStart(startNode, startOffset);
+            range.setEnd(endNode, endOffset);
+            selection === null || selection === void 0 ? void 0 : selection.removeAllRanges();
+            selection === null || selection === void 0 ? void 0 : selection.addRange(range);
+        }
+    }
     function simulateBackspace() {
-        /*
-        const event = new KeyboardEvent('keydown', {
-          key: 'Backspace',
-          code: 'Backspace',
-          keyCode: 8,
-          bubbles: true,
-          cancelable: true,
-        });
-        */
         const event = new InputEvent('beforeinput', {
             bubbles: true,
             cancelable: true,
@@ -79,6 +105,25 @@ describe('Editable Div - Backspace keydown behavior', () => {
         it('2. backspace com texto na linha cursor no inicio', () => {
             const antes = '<div>|texto</div>';
             const depois = '<div>|texto</div>';
+            setupHtmlAndCursor(antes);
+            simulateBackspace();
+            expect(editable.innerHTML).toBe(getExpectedHtml(depois));
+        });
+        /* TODO: dar um jeito de manter esse teste
+         * por que ele não passa no jest por conta de não ser possível disparar o comportamento
+         * default do browser, mas é importante lembrar que esse comportamento tem que ocorrer
+         * dentro dessas circunstancias.
+        it('3. backspace com texto na linha cursor no offset 1 com texto apos o cursor', () => {
+          const antes = '<div>t|exto</div>';
+          const depois = '<div>|exto</div>';
+          setupHtmlAndCursor(antes);
+          simulateBackspace();
+          expect(editable.innerHTML).toBe(getExpectedHtml(depois));
+        });
+        */
+        it('4. backspace com texto na linha cursor no offset 1 sem texto apos o cursor', () => {
+            const antes = '<div>t|</div>';
+            const depois = '<div><br></div>';
             setupHtmlAndCursor(antes);
             simulateBackspace();
             expect(editable.innerHTML).toBe(getExpectedHtml(depois));
@@ -328,6 +373,15 @@ describe('Editable Div - Backspace keydown behavior', () => {
             const antes = '<div>texto1</div><div>texto2</div><div>|<br></div>';
             const depois = '<div>texto1</div><div>texto2|</div>';
             setupHtmlAndCursor(antes);
+            simulateBackspace();
+            expect(editable.innerHTML).toBe(getExpectedHtml(depois));
+        });
+    });
+    describe('Ao pressionar backspace no textbox deve acontecer: cursor não colapsado uma linha:', () => {
+        it('1. backspace na primeira linha com toda a palavra selecionada', () => {
+            const antes = '<div>|texto1|</div>';
+            const depois = '<div><br></div>';
+            setupHtmlAndCursor2(antes);
             simulateBackspace();
             expect(editable.innerHTML).toBe(getExpectedHtml(depois));
         });
